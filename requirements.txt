@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+streamlit
+anthropic
+openai
+python-dotenv
+requests
+google-genai
