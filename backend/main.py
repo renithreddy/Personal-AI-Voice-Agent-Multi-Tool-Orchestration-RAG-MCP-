@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from llm import get_llm_response
+from llm import get_llm_response_with_tools
+import json
 
 app = FastAPI()
 
@@ -13,5 +14,5 @@ def root():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    reply = get_llm_response(request.message)
+    reply = get_llm_response_with_tools(request.message)
     return {"reply": reply}
