@@ -232,44 +232,49 @@ def render_boot_sequence() -> None:
 # SIDEBAR -- branding + module nav icons
 # --------------------------------------------------------------------------
 def render_sidebar_header() -> None:
-    with st.sidebar:
-        st.markdown(
-            '<div class="jarvis-header">'
-            '<span style="font-family:\'Orbitron\',sans-serif;font-size:1.15rem;color:var(--accent);letter-spacing:2px;">J.A.R.V.I.S.</span>'
-            '<span class="status-dot"></span>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        st.caption("PERSONAL AI VOICE AGENT · ONLINE")
-        st.write("")
+    st.markdown(
+        '<div class="jarvis-header">'
+        '<span style="font-family:\'Orbitron\',sans-serif;font-size:1.15rem;color:var(--accent);letter-spacing:2px;">J.A.R.V.I.S.</span>'
+        '<span class="status-dot"></span>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-        nav_items = [
-            ("💬", "Chat", None),
-            ("⛅", "Weather", "Weather tool lands in Phase 1 · Step 3"),
-            ("📧", "Mail", "Gmail tool lands in Phase 1 · Step 4"),
-            ("🎙️", "Voice", "Voice I/O lands in Phase 1 · Step 5"),
-        ]
-        cols = st.columns(4)
-        for col, (icon, label, note) in zip(cols, nav_items):
-            with col:
-                clicked = st.button(
-                    icon,
-                    key=f"nav_{label}",
-                    help=label if note is None else f"{label} — {note}",
-                    width="stretch",
-                )
-                if clicked and note:
-                    st.toast(note, icon="🛰️")
-        st.divider()
+    st.caption("PERSONAL AI VOICE AGENT · ONLINE")
+    st.write("")
 
+    nav_items = [
+        ("💬", "Chat", None),
+        ("⛅", "Weather", "Weather tool lands in Phase 1 · Step 3"),
+        ("📧", "Mail", "Gmail tool lands in Phase 1 · Step 4"),
+        ("🎙️", "Voice", "Voice I/O lands in Phase 1 · Step 5"),
+    ]
+
+    cols = st.columns(4)
+
+    for col, (icon, label, note) in zip(cols, nav_items):
+        with col:
+            clicked = st.button(
+                icon,
+                key=f"nav_{label}",
+                help=label if note is None else f"{label} — {note}",
+                use_container_width=True,
+            )
+
+            if clicked and note:
+                st.toast(note, icon="🛰️")
+
+    st.divider()
 
 # --------------------------------------------------------------------------
 # SIDEBAR -- live system metrics (real psutil data, auto-refreshes)
 # --------------------------------------------------------------------------
 @st.fragment(run_every="2s")
 def render_metrics_panel() -> None:
+
     if "net_history" not in st.session_state:
         st.session_state.net_history = deque([4] * 24, maxlen=24)
+
     if "_last_net" not in st.session_state:
         st.session_state._last_net = None
 
@@ -279,41 +284,84 @@ def render_metrics_panel() -> None:
     now = time.time()
 
     prev = st.session_state._last_net
+
     if prev is not None:
         elapsed = max(now - prev["t"], 0.5)
-        rate_mb = ((net.bytes_sent - prev["sent"]) + (net.bytes_recv - prev["recv"])) / elapsed / (1024 * 1024)
+        rate_mb = (
+            (net.bytes_sent - prev["sent"])
+            + (net.bytes_recv - prev["recv"])
+        ) / elapsed / (1024 * 1024)
     else:
         rate_mb = 0.0
-    st.session_state._last_net = {"t": now, "sent": net.bytes_sent, "recv": net.bytes_recv}
+
+    st.session_state._last_net = {
+        "t": now,
+        "sent": net.bytes_sent,
+        "recv": net.bytes_recv,
+    }
 
     st.session_state.net_history.append(max(cpu, 4))
 
-    # "STATUS" is a derived health indicator (real CPU + RAM load), not a
-    # literal battery reading -- there usually isn't one in a Codespace/VM.
     if cpu < 70 and mem < 80:
-        status, color = "OPTIMAL", "var(--good)"
+        status = "OPTIMAL"
+        color = "var(--good)"
     elif cpu < 90 and mem < 95:
-        status, color = "ELEVATED", "var(--warn)"
+        status = "ELEVATED"
+        color = "var(--warn)"
     else:
-        status, color = "CRITICAL", "var(--bad)"
+        status = "CRITICAL"
+        color = "var(--bad)"
 
-    bars = "".join(f'<div class="metric-bar" style="height:{v:.0f}%;"></div>' for v in st.session_state.net_history)
+    bars = "".join(
+        f'<div class="metric-bar" style="height:{v:.0f}%;"></div>'
+        for v in st.session_state.net_history
+    )
 
     html = f"""
     <div class="metrics-card">
-      <span class="corner c-tl"></span><span class="corner c-tr"></span>
-      <span class="corner c-bl"></span><span class="corner c-br"></span>
-      <div class="metrics-title">SYSTEM METRICS</div>
-      <div class="metric-row">{ICON_CPU}<span class="metric-label">CPU USAGE</span><span class="metric-value">{cpu:.0f}%</span></div>
-      <div class="metric-row">{ICON_MEM}<span class="metric-label">MEMORY</span><span class="metric-value">{mem:.0f}%</span></div>
-      <div class="metric-row">{ICON_NET}<span class="metric-label">NETWORK</span><span class="metric-value">{rate_mb:.2f} MB/s</span></div>
-      <div class="metric-row">{ICON_PWR}<span class="metric-label">STATUS</span><span class="metric-value" style="color:{color};">{status}</span></div>
-      <div class="metric-bars">{bars}</div>
+      <span class="corner c-tl"></span>
+      <span class="corner c-tr"></span>
+      <span class="corner c-bl"></span>
+      <span class="corner c-br"></span>
+
+      <div class="metrics-title">
+          SYSTEM METRICS
+      </div>
+
+      <div class="metric-row">
+        {ICON_CPU}
+        <span class="metric-label">CPU USAGE</span>
+        <span class="metric-value">{cpu:.0f}%</span>
+      </div>
+
+      <div class="metric-row">
+        {ICON_MEM}
+        <span class="metric-label">MEMORY</span>
+        <span class="metric-value">{mem:.0f}%</span>
+      </div>
+
+      <div class="metric-row">
+        {ICON_NET}
+        <span class="metric-label">NETWORK</span>
+        <span class="metric-value">{rate_mb:.2f} MB/s</span>
+      </div>
+
+      <div class="metric-row">
+        {ICON_PWR}
+        <span class="metric-label">STATUS</span>
+        <span class="metric-value" style="color:{color};">
+            {status}
+        </span>
+      </div>
+
+      <div class="metric-bars">
+        {bars}
+      </div>
+
     </div>
     """
-        st.markdown(html, unsafe_allow_html=True)
 
-
+    st.markdown(html, unsafe_allow_html=True)
 # --------------------------------------------------------------------------
 # MAIN CHAT AREA
 # --------------------------------------------------------------------------
@@ -369,10 +417,11 @@ def main() -> None:
         st.session_state.booted = True
         st.rerun()
     else:
-        render_sidebar_header()
-    with st.sidebar:
-        render_metrics_panel()
-    render_main_chat()
+        with st.sidebar:
+            render_sidebar_header()
+            render_metrics_panel()
+
+        render_main_chat()
 
 
 main()
