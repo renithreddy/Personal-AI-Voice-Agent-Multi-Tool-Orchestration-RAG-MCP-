@@ -3,6 +3,7 @@ import json
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from tools.weather import get_weather
+from tools.gmail import get_important_emails
 
 load_dotenv()
 
@@ -29,6 +30,20 @@ TOOLS = [
             },
             "required": ["city"]
         }
+    },
+        {
+        "name": "get_important_emails",
+        "description": "Fetch the user's recent important emails from Gmail. Use this when the user asks about emails, inbox, or messages. Sensitive emails and OTPs are automatically filtered out.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "max_results": {
+                    "type": "integer",
+                    "description": "Number of emails to fetch, default is 5"
+                }
+            },
+            "required": []
+        }
     }
 ]
 
@@ -52,6 +67,9 @@ def get_llm_response_with_tools(message: str) -> str:
         # Step 3 — actually call the tool
         if tool_name == "get_weather":
             tool_result = get_weather(tool_input["city"])
+        elif tool_name == "get_important_emails":
+            max_results = tool_input.get("max_results", 5)
+            tool_result = get_important_emails(max_results)
         else:
             tool_result = {"error": "Unknown tool"}
 
