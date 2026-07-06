@@ -26,7 +26,7 @@ SENSITIVE_PATTERNS = [
 SENSITIVE_SENDERS = [
     'noreply', 'no-reply', 'donotreply',
     'accounts@', 'security@', 'verify@',
-    'verification@', 'otp@', 'alerts@'
+    'verification@', 'otp@'
 ]
 
 def is_sensitive(sender: str, subject: str, body: str) -> bool:
@@ -63,18 +63,33 @@ def authenticate_gmail():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Build credentials config from .env instead of credentials.json file
+            from google_auth_oauthlib.flow import Flow
             client_config = {
                 "installed": {
                     "client_id": os.getenv("GMAIL_CLIENT_ID"),
                     "client_secret": os.getenv("GMAIL_CLIENT_SECRET"),
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": ["http://localhost"]
+                    "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"]
                 }
             }
-            flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-            creds = flow.run_local_server(port=0)
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=SCOPES,
+                redirect_uri="urn:ietf:wg:oauth:2.0:oob"
+            )
+            auth_url, _ = flow.authorization_url(
+                access_type='offline',
+                prompt='consent'
+            )
+            print("\n" + "="*60)
+            print("GMAIL AUTH REQUIRED")
+            print("Open this URL in your browser:")
+            print(auth_url)
+            print("="*60)
+            code = input("Paste the authorization code here: ")
+            flow.fetch_token(code=code)
+            creds = flow.credentials
 
         # Save token for next time
         with open(TOKEN_FILE, 'w') as f:
@@ -83,17 +98,19 @@ def authenticate_gmail():
     return build('gmail', 'v1', credentials=creds)
 
 # ── Main email fetching function ──────────────────────────────────────────────
-def get_important_emails(max_results: int = 10) -> list:
+def get_important_emails(max_results: int = 15) -> list:
     """
     Fetches recent emails, filters out sensitive/OTP content,
     returns a safe list of email summaries for the LLM to read.
     """
     try:
         service = authenticate_gmail()
+        import datetime
+        today = datetime.date.today().strftime('%Y/%m/%d')
         results = service.users().messages().list(
             userId='me',
             maxResults=max_results,
-            q='is:unread'
+            q=f'after:{today}'
         ).execute()
 
         messages = results.get('messages', [])
