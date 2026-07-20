@@ -24,7 +24,8 @@ SENSITIVE_PATTERNS = [
 ]
 
 SENSITIVE_SENDERS = [
-    'noreply', 'no-reply', 'donotreply',
+  #  'noreply', 'no-reply', 'donotreply',
+    'password' ,
     'accounts@', 'security@', 'verify@',
     'verification@', 'otp@'
 ]
